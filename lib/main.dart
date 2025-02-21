@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:fredi_kasirukk/login_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://xevjvzaewabpktwvrhiu.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhldmp2emFld2FicGt0d3ZyaGl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3Njc1ODcsImV4cCI6MjA1NTM0MzU4N30.7sD61vh7jPDmZoqeqms8noqLbQYq5i97DxAXoxdqZdU',
+  );
   runApp(const MyApp());
 }
 
@@ -34,6 +41,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final usernameCtrl = TextEditingController();
+  final pwCtrl = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,14 +56,15 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Welcom Beck',
+                'Welcome Back',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               // Field email dengan warna latar putih
               TextField(
+                controller: usernameCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Username',
                   fillColor: Colors.white,
                   filled: true,
                   border: OutlineInputBorder(
@@ -65,6 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 10),
               // Field password dengan warna latar putih
               TextField(
+                controller: pwCtrl,
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Password',
@@ -79,11 +90,22 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomePage()),
-                    );
+                  onPressed: () async {
+                    var result = await Supabase.instance.client
+                        .from("User")
+                        .select()
+                        .eq("Username", usernameCtrl.text)
+                        .eq("Password", pwCtrl.text);
+                    if (result.isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const HomePage()),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text("Username atau password salah")));
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
