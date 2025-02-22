@@ -103,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             builder: (context) => const HomePage()),
                       );
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                           content: Text("Username atau password salah")));
                     }
                   },

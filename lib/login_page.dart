@@ -1,5 +1,7 @@
+import 'package:dropdown_textfield/dropdown_textfield.dart';
 import 'package:flutter/material.dart';
 import 'package:fredi_kasirukk/main.dart';
+import 'package:fredi_kasirukk/struk.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Pastikan file main.dart Anda sudah sesuai
 
 // Halaman utama (HomePage) yang mengatur navigasi
@@ -16,6 +18,7 @@ class _HomePageState extends State<HomePage>
   List<Map<String, dynamic>> pelanggan = [];
   List<Map<String, dynamic>> penjualan = [];
   List<Map<String, dynamic>> riwayat = [];
+  int totalHarga = 0;
   var myTab;
 
   void fetchProduk() async {
@@ -38,6 +41,16 @@ class _HomePageState extends State<HomePage>
     });
   }
 
+  void fetchRiwayat() async {
+    var result = await Supabase.instance.client
+        .from("Penjualan")
+        .select("*, Pelanggan(*), DetailPenjualan(*, Produk(*))")
+        .order("PenjualanID", ascending: true);
+    setState(() {
+      riwayat = result;
+    });
+  }
+
   void editProduk(Map produk) {
     final namaCtrl = TextEditingController(text: produk["NamaProduk"]);
     final alamatCtrl = TextEditingController(text: produk["Harga"].toString());
@@ -49,15 +62,15 @@ class _HomePageState extends State<HomePage>
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(
                 controller: namaCtrl,
-                decoration: InputDecoration(labelText: "Nama Produk"),
+                decoration: const InputDecoration(labelText: "Nama Produk"),
               ),
               TextField(
                 controller: alamatCtrl,
-                decoration: InputDecoration(labelText: "Harga"),
+                decoration: const InputDecoration(labelText: "Harga"),
               ),
               TextField(
                 controller: noTelpCtrl,
-                decoration: InputDecoration(labelText: "Stok"),
+                decoration: const InputDecoration(labelText: "Stok"),
               ),
               ElevatedButton(
                   onPressed: () async {
@@ -69,7 +82,7 @@ class _HomePageState extends State<HomePage>
                     fetchProduk();
                     Navigator.of(context).pop();
                   },
-                  child: Text("Simpan"))
+                  child: const Text("Simpan"))
             ]),
           );
         });
@@ -86,15 +99,15 @@ class _HomePageState extends State<HomePage>
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(
                 controller: namaCtrl,
-                decoration: InputDecoration(labelText: "Nama Pelanggan"),
+                decoration: const InputDecoration(labelText: "Nama Pelanggan"),
               ),
               TextField(
                 controller: alamatCtrl,
-                decoration: InputDecoration(labelText: "Alamat"),
+                decoration: const InputDecoration(labelText: "Alamat"),
               ),
               TextField(
                 controller: noTelpCtrl,
-                decoration: InputDecoration(labelText: "Nomor telepon"),
+                decoration: const InputDecoration(labelText: "Nomor telepon"),
               ),
               ElevatedButton(
                   onPressed: () async {
@@ -106,7 +119,7 @@ class _HomePageState extends State<HomePage>
                     fetchPelanggan();
                     Navigator.of(context).pop();
                   },
-                  child: Text("Simpan"))
+                  child: const Text("Simpan"))
             ]),
           );
         });
@@ -119,6 +132,7 @@ class _HomePageState extends State<HomePage>
     myTab = TabController(length: 4, vsync: this);
     fetchProduk();
     fetchPelanggan();
+    fetchRiwayat();
   }
 
   @override
@@ -135,7 +149,7 @@ class _HomePageState extends State<HomePage>
             appBar: AppBar(
               title: const Text('Selamat Datang Di Toko Gitar '),
               centerTitle: true,
-              bottom: TabBar(controller: myTab, tabs: [
+              bottom: TabBar(controller: myTab, tabs: const [
                 Text("Produk"),
                 Text("Pelanggan"),
                 Text("Penjualan"),
@@ -149,7 +163,7 @@ class _HomePageState extends State<HomePage>
                     body: ListView(
                       children: [
                         ...List.generate(produk.length, (index) {
-                          Map myproduk = produk[index];
+                          Map<String, dynamic> myproduk = produk[index];
                           return ListTile(
                             title: Text(myproduk["NamaProduk"]),
                             subtitle: Column(
@@ -165,7 +179,7 @@ class _HomePageState extends State<HomePage>
                                   onPressed: () {
                                     editProduk(produk[index]);
                                   },
-                                  icon: Icon(Icons.edit)),
+                                  icon: const Icon(Icons.edit)),
                               IconButton(
                                   onPressed: () async {
                                     await Supabase.instance.client
@@ -174,7 +188,52 @@ class _HomePageState extends State<HomePage>
                                         .eq("ProdukID", myproduk["ProdukID"]);
                                     fetchProduk();
                                   },
-                                  icon: Icon(Icons.delete)),
+                                  icon: const Icon(Icons.delete)),
+                              IconButton(
+                                  onPressed: () {
+                                    var jumlahCtrl = TextEditingController();
+
+                                    showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return Dialog(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                TextField(
+                                                  controller: jumlahCtrl,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                          labelText:
+                                                              "Jumlah beli"),
+                                                ),
+                                                ElevatedButton(
+                                                    onPressed: () {
+                                                      myproduk["JumlahProduk"] =
+                                                          int.parse(
+                                                              jumlahCtrl.text);
+                                                      myproduk["Subtotal"] =
+                                                          (int.parse(jumlahCtrl
+                                                                      .text) *
+                                                                  myproduk[
+                                                                      "Harga"])
+                                                              as int;
+                                                      setState(() {
+                                                        penjualan.add(myproduk);
+                                                        totalHarga +=
+                                                            myproduk["Subtotal"]
+                                                                as int;
+                                                      });
+                                                      Navigator.of(context)
+                                                          .pop();
+                                                    },
+                                                    child: const Text("Simpan"))
+                                              ],
+                                            ),
+                                          );
+                                        });
+                                  },
+                                  icon: const Icon(Icons.shopping_cart))
                             ]),
                           );
                         }),
@@ -194,18 +253,18 @@ class _HomePageState extends State<HomePage>
                                     children: [
                                       TextField(
                                         controller: namaCtrl,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                             labelText: "Nama Produk"),
                                       ),
                                       TextField(
                                         controller: alamatCtrl,
-                                        decoration:
-                                            InputDecoration(labelText: "Harga"),
+                                        decoration: const InputDecoration(
+                                            labelText: "Harga"),
                                       ),
                                       TextField(
                                         controller: noTelpCtrl,
-                                        decoration:
-                                            InputDecoration(labelText: "Stok"),
+                                        decoration: const InputDecoration(
+                                            labelText: "Stok"),
                                       ),
                                       ElevatedButton(
                                           onPressed: () async {
@@ -221,12 +280,12 @@ class _HomePageState extends State<HomePage>
                                             fetchProduk();
                                             Navigator.of(context).pop();
                                           },
-                                          child: Text("Simpan"))
+                                          child: const Text("Simpan"))
                                     ]),
                               );
                             });
                       },
-                      child: Icon(Icons.add),
+                      child: const Icon(Icons.add),
                     ),
                   ),
                   Scaffold(
@@ -249,7 +308,7 @@ class _HomePageState extends State<HomePage>
                                   onPressed: () {
                                     editPelanggan(pelanggan[index]);
                                   },
-                                  icon: Icon(Icons.edit)),
+                                  icon: const Icon(Icons.edit)),
                               IconButton(
                                   onPressed: () async {
                                     await Supabase.instance.client
@@ -257,10 +316,9 @@ class _HomePageState extends State<HomePage>
                                         .delete()
                                         .eq("PelangganID",
                                             myproduk["PelangganID"]);
-                                            fetchPelanggan();
+                                    fetchPelanggan();
                                   },
-                                  icon: Icon(Icons.delete)),
-
+                                  icon: const Icon(Icons.delete)),
                             ]),
                           );
                         }),
@@ -280,17 +338,17 @@ class _HomePageState extends State<HomePage>
                                     children: [
                                       TextField(
                                         controller: namaCtrl,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                             labelText: "Nama Pelanggan"),
                                       ),
                                       TextField(
                                         controller: alamatCtrl,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                             labelText: "Alamat"),
                                       ),
                                       TextField(
                                         controller: noTelpCtrl,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                             labelText: "Nomor telepon"),
                                       ),
                                       ElevatedButton(
@@ -307,43 +365,178 @@ class _HomePageState extends State<HomePage>
                                             fetchPelanggan();
                                             Navigator.of(context).pop();
                                           },
-                                          child: Text("Simpan"))
+                                          child: const Text("Simpan"))
                                     ]),
                               );
                             });
                       },
-                      child: Icon(Icons.add),
+                      child: const Icon(Icons.add),
                     ),
                   ),
+                  Scaffold(
+                      body: penjualan.isNotEmpty
+                          ? ListView(
+                              children: [
+                                ...List.generate(penjualan.length, (index) {
+                                  Map myproduk = penjualan[index];
+
+                                  return ListTile(
+                                    title: Text(myproduk["NamaProduk"]),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                            "Jumlah : ${myproduk["JumlahProduk"]}"),
+                                        Text(
+                                            "Subtotal:Rp.${myproduk["Subtotal"]}"),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                                Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Text(
+                                      "Total harga:Rp ${totalHarga.toString()}"),
+                                ),
+                                ElevatedButton(
+                                    onPressed: () {
+                                      showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            var pelangganCTrl =
+                                                SingleValueDropDownController();
+
+                                            return Dialog(
+                                              child: Column(
+                                                children: [
+                                                  DropDownTextField(
+                                                    controller: pelangganCTrl,
+                                                    textFieldDecoration:
+                                                        const InputDecoration(
+                                                            labelText:
+                                                                "Pilih pelanggan"),
+                                                    dropDownList: [
+                                                      ...List.generate(
+                                                          pelanggan.length,
+                                                          (index) {
+                                                        return DropDownValueModel(
+                                                            name: pelanggan[
+                                                                    index][
+                                                                "NamaPelanggan"],
+                                                            value: pelanggan[
+                                                                    index][
+                                                                "PelangganID"]);
+                                                      })
+                                                    ],
+                                                  ),
+                                                  ElevatedButton(
+                                                      onPressed: () async {
+                                                        List<
+                                                                Map<String,
+                                                                    dynamic>>
+                                                            myDetail = [];
+                                                        print(pelangganCTrl
+                                                            .dropDownValue!
+                                                            .value);
+                                                        var hasilJual =
+                                                            await Supabase
+                                                                .instance.client
+                                                                .from(
+                                                                    "Penjualan")
+                                                                .insert([
+                                                          {
+                                                            "TotalHarga":
+                                                                totalHarga,
+                                                            "PelangganID":
+                                                                pelangganCTrl
+                                                                    .dropDownValue!
+                                                                    .value
+                                                          }
+                                                        ]).select();
+
+                                                        for (var item
+                                                            in penjualan) {
+                                                          myDetail.add({
+                                                            "PenjualanID":
+                                                                hasilJual[0][
+                                                                    "PenjualanID"],
+                                                            "ProdukID": item[
+                                                                "ProdukID"],
+                                                            "JumlahProduk":
+                                                                item["JumlahProduk"]
+                                                                    as int,
+                                                            "Subtotal": item[
+                                                                "Subtotal"],
+                                                          });
+                                                        }
+
+                                                        print(myDetail);
+
+                                                        await Supabase
+                                                            .instance.client
+                                                            .from(
+                                                                "DetailPenjualan")
+                                                            .insert(myDetail);
+
+                                                        for (var item
+                                                            in penjualan) {
+                                                          item["Stok"] -= item[
+                                                                  "JumlahProduk"]
+                                                              as int;
+                                                          item.remove(
+                                                              "Subtotal");
+                                                          item.remove(
+                                                              "JumlahProduk");
+                                                        }
+
+                                                        await Supabase
+                                                            .instance.client
+                                                            .from("Produk")
+                                                            .upsert(penjualan);
+
+                                                        setState(() {
+                                                          penjualan.clear();
+                                                          totalHarga = 0;
+                                                        });
+                                                        fetchProduk();
+                                                        fetchRiwayat();
+                                                        Navigator.of(context)
+                                                            .pop();
+                                                      },
+                                                      child:
+                                                          const Text("Bayar"))
+                                                ],
+                                              ),
+                                            );
+                                          });
+                                    },
+                                    child: const Text("Pilih pembeli"))
+                              ],
+                            )
+                          : null),
                   ListView(
                     children: [
-                      ...List.generate(produk.length, (index) {
-                        Map myproduk = produk[index];
+                      ...List.generate(riwayat.length, (index) {
+                        Map myproduk = riwayat[index];
                         return ListTile(
-                          title: Text(myproduk["NamaProduk"]),
+                          title: Text(myproduk["Pelanggan"]["NamaPelanggan"]),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Stok: ${myproduk["Stok"]}"),
-                              Text("Harga:Rp.${myproduk["Harga"]}"),
+                              Text("Tanggal: ${myproduk["TanggalPenjualan"]}"),
+                              Text("Total harga:Rp.${myproduk["TotalHarga"]}"),
                             ],
                           ),
-                        );
-                      }),
-                    ],
-                  ),
-                  ListView(
-                    children: [
-                      ...List.generate(produk.length, (index) {
-                        Map myproduk = produk[index];
-                        return ListTile(
-                          title: Text(myproduk["NamaProduk"]),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Stok: ${myproduk["Stok"]}"),
-                              Text("Harga:Rp.${myproduk["Harga"]}"),
-                            ],
+                          trailing: IconButton(
+                            icon: const Icon(Icons.print),
+                            onPressed: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          Struk(penjualan: myproduk)));
+                            },
                           ),
                         );
                       }),
